@@ -37,24 +37,6 @@ A LLM回覆：聽起來您現在感到有些挫折呢。不知道是否方便聊
 - Ollama API
 - 相關 Python 套件
 
-## 安裝步驟
-
-1. 克隆專案
-```bash
-git clone https://github.com/yourusername/counseling-dialogue-system.git
-cd counseling-dialogue-system
-```
-
-2. 安裝依賴
-```bash
-pip install -r requirements.txt
-```
-
-3. 確保 Ollama 服務運行中
-```bash
-# 檢查 Ollama 狀態
-ollama list
-```
 
 ## 使用方法
 
