@@ -1,153 +1,191 @@
 import ollama
-import json
 import logging
-from typing import Dict, List
 
 # 設定日誌
 logging.basicConfig(level=logging.ERROR, filename='counseling_system.log')
-console = logging.StreamHandler()
-console.setLevel(logging.INFO)
-formatter = logging.Formatter('%(message)s')
-console.setFormatter(formatter)
 logger = logging.getLogger(__name__)
-logger.addHandler(console)
 
 # 初始化 Ollama 客戶端
 client = ollama.Client()
 
-class ResponseAnalyzer:
-    DEFAULT_RESPONSES = {
-        'sequential_responses': [
-            "我聽到你的困擾",
-            "這段時間一定很不容易",
-            "你的感受都是重要的",
-            "要不要多說一些？"
-        ],
-        'integrated_response': "我理解你的困擾，這些感受都很重要，願意多分享嗎？",
-        'evaluation': {
-            'better_approach': '循序漸進',
-            'reason': """
-案主目前面臨以下情況：
-1. 工作壓力大且持續失眠
-2. 同事升遷造成比較和自我懷疑
-3. 情緒起伏大，需要被理解和支持
+def get_step_one(user_input: str) -> str:
+    """第一步：情緒辨識"""
+    prompt = """你是專業心理諮商師，請只用繁體中文回應。
+    
+第一步 - 情緒辨識：
+請僅反映案主當前的情緒狀態，不要加入其他內容。
 
-建議採用循序漸進方式，原因如下：
-1. 案主情緒狀態複雜，需要被完整理解
-2. 透過漸進式回應，能讓案主感受到每個層面都被看見
-3. 有助於建立信任關係，為深入對話做準備
-4. 能幫助案主逐步整理情緒，重建自信"""
-        }
-    }
+範例：「我聽到你現在感到很疲憊和無力」
 
-    @staticmethod
-    def parse_response(response: str) -> Dict:
-        """解析 LLM 的回應"""
-        result = {
-            'sequential_responses': [],
-            'integrated_response': "",
-            'evaluation': {
-                'better_approach': '',
-                'reason': ''
-            }
-        }
-
-        try:
-            lines = response.split('\n')
-            current_section = None
-            reason_lines = []
-
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-
-                # 處理循序漸進回應
-                if line.startswith(('A.', 'B.', 'C.', 'D.')):
-                    response_text = line.split(':', 1)[1].strip() if ':' in line else line.split('：', 1)[1].strip()
-                    result['sequential_responses'].append(response_text)
-
-                # 處理整合回應
-                elif '【整合回應】' in line:
-                    current_section = 'integrated'
-                elif current_section == 'integrated' and line:
-                    result['integrated_response'] = line
-                    current_section = None
-
-                # 處理評估部分
-                elif '較佳方式' in line or '建議方式' in line:
-                    approach = line.split('：', 1)[1].strip() if '：' in line else line.split(':', 1)[1].strip()
-                    # 轉換英文為中文
-                    if 'Sequential' in approach or 'sequential' in approach:
-                        approach = '循序漸進'
-                    result['evaluation']['better_approach'] = approach
-                elif '選擇原因' in line:
-                    current_section = 'reason'
-                elif current_section == 'reason' and line:
-                    reason_lines.append(line)
-
-            # 處理評估原因
-            if reason_lines:
-                full_reason = '\n'.join(reason_lines)
-                if '需要更多資訊' in full_reason or len(full_reason) < 50:
-                    result['evaluation']['reason'] = ResponseAnalyzer.DEFAULT_RESPONSES['evaluation']['reason']
-                else:
-                    result['evaluation']['reason'] = full_reason
-
-            # 驗證結果
-            if len(result['sequential_responses']) != 4:
-                result['sequential_responses'] = ResponseAnalyzer.DEFAULT_RESPONSES['sequential_responses']
-            
-            if not result['integrated_response']:
-                result['integrated_response'] = ResponseAnalyzer.DEFAULT_RESPONSES['integrated_response']
-            
-            if not result['evaluation']['better_approach']:
-                result['evaluation']['better_approach'] = ResponseAnalyzer.DEFAULT_RESPONSES['evaluation']['better_approach']
-            
-            if not result['evaluation']['reason'] or len(result['evaluation']['reason']) < 50:
-                result['evaluation']['reason'] = ResponseAnalyzer.DEFAULT_RESPONSES['evaluation']['reason']
-
-        except Exception as e:
-            logging.error(f"解析回應時發生錯誤: {str(e)}")
-            logging.error(f"原始回應: {response}")
-            return ResponseAnalyzer.DEFAULT_RESPONSES
-
-        return result
-
-def llm_b_analyzer(user_input: str) -> Dict:
-    """B LLM 負責分析和生成回應"""
-    system_prompt = """你是一位資深的心理諮商督導，請使用繁體中文回應：
-
-1. 請生成四個循序漸進的回應：
-A. 情緒回應
-B. 情緒+同理回應
-C. 情緒+同理+支持回應
-D. 完整回應（加入引導）
-
-2. 請提供一個整合性回應
-
-3. 評估部分（請提供詳細分析）：
-- 比較循序漸進和整合回應兩種方式
-- 選擇較佳方式
-- 提供詳細的選擇原因（至少包含案主現況分析和建議原因）
-
-注意：
-- 完全使用繁體中文
-- 不使用英文或其他語言
-- 提供具體詳細的評估原因"""
+限制：
+- 只做情緒辨識
+- 不要提供建議
+- 不要進行評價
+- 字數限制在30字內"""
 
     try:
         response = client.chat(model='llama3:8b', messages=[
-            {'role': 'system', 'content': system_prompt},
+            {'role': 'system', 'content': prompt},
             {'role': 'user', 'content': user_input}
         ])
-        return ResponseAnalyzer.parse_response(response['message']['content'])
+        return response['message']['content']
     except Exception as e:
-        logging.error(f"LLM 回應過程發生錯誤: {str(e)}")
-        return ResponseAnalyzer.DEFAULT_RESPONSES
+        logger.error(f"第一步回應錯誤: {str(e)}")
+        return "系統暫時無法回應"
+
+def get_step_two(step_one: str, user_input: str) -> str:
+    """第二步：情緒辨識 + 同理"""
+    prompt = f"""你是專業心理諮商師，請只用繁體中文回應。
+    
+第二步 - 在第一步的基礎上，加入同理：
+前一步回應：{step_one}
+
+請在這個基礎上，加入對案主處境的理解。
+
+範例：
+第一步：「我聽到你現在感到很疲憊和無力」
+第二步：「我聽到你現在感到很疲憊和無力，這種持續工作卻看不到成果的感受確實讓人感到挫折」
+
+限制：
+- 必須包含第一步的內容
+- 加入對處境的理解
+- 自然地銜接兩個部分"""
+
+    try:
+        response = client.chat(model='llama3:8b', messages=[
+            {'role': 'system', 'content': prompt},
+            {'role': 'user', 'content': user_input}
+        ])
+        return response['message']['content']
+    except Exception as e:
+        logger.error(f"第二步回應錯誤: {str(e)}")
+        return step_one
+
+def get_step_three(step_two: str, user_input: str) -> str:
+    """第三步：情緒辨識 + 同理 + 支持"""
+    prompt = f"""你是專業心理諮商師，請只用繁體中文回應。
+    
+第三步 - 在第二步的基礎上，加入支持：
+前一步回應：{step_two}
+
+請在這個基礎上，加入支持性的回應。
+
+範例：
+第二步：「我聽到你現在感到很疲憊和無力，這種持續工作卻看不到成果的感受確實讓人感到挫折」
+第三步：「我聽到你現在感到很疲憊和無力，這種持續工作卻看不到成果的感受確實讓人感到挫折。你的這些感受都是合理的，每個人在這樣的處境下都會感到困擾」
+
+限制：
+- 必須包含第二步的內容
+- 加入支持性話語
+- 自然地銜接各個部分"""
+
+    try:
+        response = client.chat(model='llama3:8b', messages=[
+            {'role': 'system', 'content': prompt},
+            {'role': 'user', 'content': user_input}
+        ])
+        return response['message']['content']
+    except Exception as e:
+        logger.error(f"第三步回應錯誤: {str(e)}")
+        return step_two
+
+def get_step_four(step_three: str, user_input: str) -> str:
+    """第四步：完整回應 + 蘇格拉底式提問"""
+    prompt = f"""你是專業心理諮商師，請只用繁體中文回應。
+    
+第四步 - 在第三步的基礎上，加入蘇格拉底式提問：
+前一步回應：{step_three}
+
+請在這個基礎上，加入一個探索性的蘇格拉底式提問。
+
+蘇格拉底式提問的特點：
+- 開放性：鼓勵深入思考
+- 引導性：幫助發現核心議題
+- 不帶評判：避免暗示或引導特定答案
+
+提問示例：
+- 「你覺得是什麼讓這些壓力特別難以承受？」
+- 「當你提到不夠好的時候，你心中的標準是什麼？」
+- 「你能分享更多關於這些感受的想法嗎？」
+
+限制：
+- 必須包含第三步的內容
+- 結尾加入一個探索性提問
+- 自然地銜接所有部分"""
+
+    try:
+        response = client.chat(model='llama3:8b', messages=[
+            {'role': 'system', 'content': prompt},
+            {'role': 'user', 'content': user_input}
+        ])
+        return response['message']['content']
+    except Exception as e:
+        logger.error(f"第四步回應錯誤: {str(e)}")
+        return step_three
+
+def get_integrated_response(user_input: str) -> str:
+    """獲取整合性回應"""
+    prompt = """你是專業心理諮商師，請只用繁體中文，提供一個整合性回應。
+
+回應需要包含：
+1. 情緒辨識：準確反映案主的情緒
+2. 同理支持：表達對案主處境的理解
+3. 蘇格拉底式提問：引導案主深入思考
+
+範例：
+「我理解你現在感到非常疲憊和無力，這種持續付出卻看不到回報的感受確實讓人感到挫折。面對這樣的狀況感到困擾都是很自然的。你覺得是什麼讓這些壓力特別讓你難以承受呢？」
+
+限制：
+- 只使用繁體中文
+- 回應要流暢自然
+- 必須以蘇格拉底式提問結束
+- 總字數不超過100字"""
+
+    try:
+        response = client.chat(model='llama3:8b', messages=[
+            {'role': 'system', 'content': prompt},
+            {'role': 'user', 'content': user_input}
+        ])
+        return response['message']['content']
+    except Exception as e:
+        logger.error(f"獲取整合回應錯誤: {str(e)}")
+        return "系統暫時無法回應"
+
+def evaluate_responses(progressive: str, integrated: str) -> str:
+    """評估兩種回應方式"""
+    prompt = f"""你是資深心理諮商督導，請只用繁體中文評估以下兩種回應方式：
+
+循序漸進回應：
+{progressive}
+
+整合回應：
+{integrated}
+
+請說明：
+1. 哪種方式更適合案主
+2. 選擇的原因
+
+評估示例：
+「建議採用循序漸進方式，因為案主情緒複雜，需要被逐步理解。這種方式能幫助案主感受到被完整理解，同時也讓諮商師能更好地掌握案主的需求變化。」
+
+限制：
+- 只使用繁體中文
+- 評估要具體明確
+- 總字數不超過100字
+- 避免任何英文字詞"""
+
+    try:
+        response = client.chat(model='llama3:8b', messages=[
+            {'role': 'system', 'content': prompt},
+            {'role': 'user', 'content': "請評估上述兩種回應方式"}
+        ])
+        return response['message']['content']
+    except Exception as e:
+        logger.error(f"評估回應錯誤: {str(e)}")
+        return "系統暫時無法進行評估"
 
 def main():
-    print("歡迎進行心理諮商對話 (輸入 'exit' 或 'quit' 結束對話)\n")
+    print("歡迎進行心理諮商對話（輸入 'exit' 或 'quit' 結束對話）\n")
     
     while True:
         try:
@@ -160,32 +198,34 @@ def main():
             
             print("\n正在分析回應...\n")
             
-            # 獲取分析結果
-            analysis = llm_b_analyzer(user_input)
+            # 獲取循序漸進回應
+            print("【循序漸進回應（漸進累積）】")
+            step_one = get_step_one(user_input)
+            print(f"步驟一：{step_one}")
             
-            # 輸出循序漸進回應
-            print("【循序漸進回應】")
-            responses = ['情緒回應', '情緒+同理', '情緒+同理+支持', '完整回應']
-            for i, (label, response) in enumerate(zip(responses, analysis['sequential_responses'])):
-                print(f"{chr(65+i)}. {label}：{response}")
+            step_two = get_step_two(step_one, user_input)
+            print(f"\n步驟二：{step_two}")
             
-            # 輸出整合回應
-            print("\n【整合回應】")
-            print(analysis['integrated_response'])
+            step_three = get_step_three(step_two, user_input)
+            print(f"\n步驟三：{step_three}")
             
-            # 輸出評估結果
-            print("\n【督導評估】")
-            print("比較兩種回應方式：")
-            print("1. 循序漸進：通過情緒反映、同理支持到深入探索，逐步建立信任和理解")
-            print("2. 整合回應：簡明扼要地表達理解、支持和引導\n")
-            print(f"建議方式：{analysis['evaluation']['better_approach']}")
-            print(f"選擇原因：\n{analysis['evaluation']['reason']}\n")
+            step_four = get_step_four(step_three, user_input)
+            print(f"\n步驟四：{step_four}")
+            
+            # 獲取整合回應
+            integrated = get_integrated_response(user_input)
+            print(f"\n【整合回應（一次性）】\n{integrated}")
+            
+            # 獲取評估
+            evaluation = evaluate_responses(step_four, integrated)
+            print(f"\n【督導評估】\n{evaluation}")
+            print()
             
         except KeyboardInterrupt:
             print("\n諮商對話已結束")
             break
         except Exception as e:
-            logging.error(f"主程序發生錯誤: {str(e)}")
+            logger.error(f"主程序錯誤: {str(e)}")
             print("\n系統發生錯誤，請重試。")
 
 if __name__ == "__main__":
