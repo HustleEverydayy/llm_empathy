@@ -83,47 +83,6 @@ B. 情緒+同理：這段時間的工作壓力和失眠，確實讓人感到很�
    - 綜合性理解
    - 問題探索
 
-## 自定義配置
-
-可以通過修改以下參數來自定義系統行為：
-
-1. 回應長度
-```python
-MAX_RESPONSE_LENGTH = 40  # 單個回應最大字數
-```
-
-2. 評估內容
-```python
-DEFAULT_EVALUATION = {
-    'better_approach': '循序漸進',
-    'reason': '...'
-}
-```
-
-## 開發指南
-
-### 添加新功能
-
-1. 在 ResponseAnalyzer 類中添加新方法
-```python
-def new_analysis_method(self, input_data):
-    # 實現新的分析方法
-    pass
-```
-
-2. 更新主程序
-```python
-analysis_result = analyzer.new_analysis_method(input_data)
-```
-
-### 修改回應策略
-
-在 system_prompt 中調整提示詞：
-```python
-system_prompt = """
-修改回應策略的提示詞...
-"""
-```
 
 ## 常見問題
 
