@@ -60,7 +60,7 @@ ollama list
 
 1. 運行系統
 ```bash
-python twvs3.py
+python twollmchat.py
 ```
 
 2. 開始對話：
