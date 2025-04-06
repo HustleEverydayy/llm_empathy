@@ -293,6 +293,7 @@ I hear how overwhelmed you're feeling at work with the constant overtime and lac
 預計完成
 (1)新方法：先使用A經過提示工程的llm產生的內容經過B的LLM檢查答案，如果適合在反回去給A LLM回答，像是反思的概念。
 (2)回答限制50字
+(3)chatgpt評估乾淨llm和提示工程版
 
 已經完成
 (1)無
@@ -302,3 +303,27 @@ I hear how overwhelmed you're feeling at work with the constant overtime and lac
 
 本週嘗試解決方法
 (1)研究反思機制設計，實現兩個LLM間的協作流程，確保A模型能根據B模型的反饋進行有效調整，同時保證最終回答控制在50字內。
+
+
+
+# **3/30 ~ 4/6 進度**
+
+預計完成
+(1)新方法：先使用A經過提示工程的llm產生的內容經過B的LLM檢查答案，如果適合在反回去給A LLM回答，像是反思的概念。
+(2)回答限制50字
+(3)chatgpt評估乾淨llm和提示工程版
+
+已經完成
+(1)新方法：先使用A經過提示工程的llm產生的內容經過B的LLM檢查答案，如果適合在反回去給A LLM回答，像是反思的概念。
+(2)回答限制50字
+(3)chatgpt評估乾淨llm和提示工程版
+
+目前問題
+(1)新方向有些問題
+
+本週嘗試解決方法
+(1)研究反思機制設計，實現兩個LLM間的協作流程，確保A模型能根據B模型的反饋進行有效調整，同時保證最終回答控制在50字內。
+
+
+評估回應分數：[https://hackmd.io/@KAlYOuuwTL-_b0DAIC6_-w/B1HQVu96ke](https://hackmd.io/@KAlYOuuwTL-_b0DAIC6_-w/B1HQVu96ke)
+
